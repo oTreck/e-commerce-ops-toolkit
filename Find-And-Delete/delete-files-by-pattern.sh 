@@ -1,0 +1,44 @@
+#!/bin/bash
+
+# ----------------------------------------
+# delete-files-by-pattern.sh
+#
+# Deletes files recursively in a base directory
+# that match one or more search patterns.
+# ----------------------------------------
+
+
+# Base directory to search in
+BASE_DIR="$HOME/path/to/search"
+
+# File extension to target (without dot)
+FILE_EXTENSION="jpg"
+
+# List of patterns to match in filenames
+PATTERNS=(
+  "example-1"
+  "example-2"
+  "example-3"
+)
+
+# Safety check
+if [[ ! -d "$BASE_DIR" ]]; then
+  echo "Error: Base directory does not exist: $BASE_DIR"
+  exit 1
+fi
+
+echo "Starting cleanup in: $BASE_DIR"
+echo "Target file type: .$FILE_EXTENSION"
+echo "Patterns: ${PATTERNS[*]}"
+echo "----------------------------------------"
+
+for pattern in "${PATTERNS[@]}"; do
+  echo "Deleting files matching pattern: $pattern"
+
+  find "$BASE_DIR" \
+    -type f \
+    -iname "*${pattern}*.${FILE_EXTENSION}" \
+    -exec rm -v {} \;
+done
+
+echo "Cleanup completed."
