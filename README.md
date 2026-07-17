@@ -2,14 +2,6 @@
 
 A collection of small everyday utilities designed to simplify repetitive e-commerce tasks and reduce manual work.
 
-The scripts in this repository help with tasks such as:
-
-* Comparing SEO metadata
-* Checking canonical tags
-* Validating hreflang tags
-* Comparing old and new shop pages
-* Optimizing images
-* Automating recurring checks
 
 The goal of this repository is to provide simple, practical tools that save time and make everyday development, content and SEO work easier.
 
