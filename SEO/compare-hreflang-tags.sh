@@ -1,13 +1,30 @@
+```bash
 #!/usr/bin/env bash
 
 set -u
 
-# Nur diese drei Werte anpassen:
-PAGE_TYPE="Kategorie"
-OLD_URL="https://www.rohde.com/damen/hausschuhe/"
-NEW_URL="https://rohde-shoes-integration.scalecommerce.cloud/Damen/Hausschuhe/"
+# ---------------------------------------------------------------------------
+# Configuration
+# Only adjust the values in this section.
+# ---------------------------------------------------------------------------
 
-python3 - "$PAGE_TYPE" "$OLD_URL" "$NEW_URL" <<'PYTHON'
+PAGE_TYPE="Category"
+
+OLD_SHOP_NAME="Old Shop"
+OLD_URL="<url>"
+
+NEW_SHOP_NAME="New Shop"
+NEW_URL="<url>"
+
+SEPARATOR_LENGTH=68
+
+python3 - \
+    "$PAGE_TYPE" \
+    "$OLD_SHOP_NAME" \
+    "$OLD_URL" \
+    "$NEW_SHOP_NAME" \
+    "$NEW_URL" \
+    "$SEPARATOR_LENGTH" <<'PYTHON'
 from __future__ import annotations
 
 import subprocess
@@ -19,7 +36,19 @@ from html.parser import HTMLParser
 from pathlib import Path
 from urllib.parse import urljoin, urlsplit, urlunsplit
 
-PAGE_TYPE, OLD_URL, NEW_URL = sys.argv[1:4]
+
+(
+    PAGE_TYPE,
+    OLD_SHOP_NAME,
+    OLD_URL,
+    NEW_SHOP_NAME,
+    NEW_URL,
+    SEPARATOR_LENGTH_VALUE,
+) = sys.argv[1:7]
+
+SEPARATOR_LENGTH = int(SEPARATOR_LENGTH_VALUE)
+SEPARATOR = "-" * SEPARATOR_LENGTH
+HEADER_SEPARATOR = "=" * SEPARATOR_LENGTH
 
 
 @dataclass
@@ -40,7 +69,7 @@ class HreflangParser(HTMLParser):
     def handle_starttag(
         self,
         tag: str,
-        attrs: list[tuple[str, str | None]]
+        attrs: list[tuple[str, str | None]],
     ) -> None:
         if tag.lower() != "link":
             return
@@ -61,7 +90,10 @@ class HreflangParser(HTMLParser):
 
         if "alternate" in rel_values and hreflang and href:
             self.entries.append(
-                (hreflang, urljoin(self.base_url, href))
+                (
+                    hreflang,
+                    urljoin(self.base_url, href),
+                )
             )
 
 
@@ -94,7 +126,7 @@ def fetch(url: str) -> FetchResult:
 
         body = body_path.read_text(
             encoding="utf-8",
-            errors="replace"
+            errors="replace",
         )
 
         metadata = process.stdout.strip().split("\t", 1)
@@ -124,7 +156,7 @@ def fetch(url: str) -> FetchResult:
 
 def parse_hreflang(
     document: str,
-    base_url: str
+    base_url: str,
 ) -> list[tuple[str, str]]:
     parser = HreflangParser(base_url)
     parser.feed(document)
@@ -159,23 +191,26 @@ def normalize_url(url: str) -> str:
 
 
 def result_text(value: bool) -> str:
-    return "OK" if value else "FEHLER"
+    return "OK" if value else "ERROR"
 
 
-def check_shop(label: str, url: str) -> dict[str, object]:
+def check_shop(
+    shop_name: str,
+    url: str,
+) -> dict[str, object]:
     page = fetch(url)
 
-    print(f"Shop:                         {label}")
-    print(f"Eingegebene URL:              {url}")
-    print(f"Finale URL:                   {page.final_url}")
-    print(f"HTTP-Status:                  {page.status}")
+    print(f"Shop:                         {shop_name}")
+    print(f"Input URL:                    {url}")
+    print(f"Final URL:                    {page.final_url}")
+    print(f"HTTP status:                  {page.status}")
 
     if page.error:
-        print(f"curl-Hinweis:                 {page.error}")
+        print(f"curl notice:                  {page.error}")
 
     if page.status < 200 or page.status >= 400:
-        print("Bewertung:                    URL NICHT ERREICHBAR")
-        print("-" * 68)
+        print("Result:                       URL NOT REACHABLE")
+        print(SEPARATOR)
 
         return {
             "codes": set(),
@@ -184,7 +219,7 @@ def check_shop(label: str, url: str) -> dict[str, object]:
 
     entries = parse_hreflang(
         page.body,
-        page.final_url
+        page.final_url,
     )
 
     codes = [
@@ -200,19 +235,19 @@ def check_shop(label: str, url: str) -> dict[str, object]:
         if count > 1
     )
 
-    print(f"hreflang-Anzahl:              {len(entries)}")
+    print(f"Hreflang count:               {len(entries)}")
 
     if not entries:
-        print("hreflang-Einträge:            NICHT VORHANDEN")
-        print("Bewertung:                    PRÜFEN")
-        print("-" * 68)
+        print("Hreflang entries:             NOT FOUND")
+        print("Result:                       WARNING")
+        print(SEPARATOR)
 
         return {
             "codes": set(),
             "ok": False,
         }
 
-    print("hreflang-Einträge:")
+    print("Hreflang entries:")
 
     for code, href in entries:
         print(f"  {code:<12} -> {href}")
@@ -221,7 +256,7 @@ def check_shop(label: str, url: str) -> dict[str, object]:
     current_url = normalize_url(page.final_url)
     self_referencing = False
 
-    print("Zielseiten-Prüfung:")
+    print("Target page checks:")
 
     for code, href in entries:
         target = fetch(href)
@@ -230,7 +265,7 @@ def check_shop(label: str, url: str) -> dict[str, object]:
         if 200 <= target.status < 400:
             target_entries = parse_hreflang(
                 target.body,
-                target.final_url
+                target.final_url,
             )
         else:
             target_entries = []
@@ -262,7 +297,7 @@ def check_shop(label: str, url: str) -> dict[str, object]:
         print(
             f"  {code:<12} "
             f"HTTP {target.status:<3} | "
-            f"Rückverweis: {result_text(has_return_link):<6} | "
+            f"Return link: {result_text(has_return_link):<6} | "
             f"Final: {target.final_url}"
         )
 
@@ -287,29 +322,29 @@ def check_shop(label: str, url: str) -> dict[str, object]:
     no_duplicates = not duplicate_codes
 
     print(
-        f"Selbstreferenzierend:         "
+        "Self-referencing:             "
         f"{result_text(self_referencing)}"
     )
 
     print(
-        f"Alle Zielseiten erreichbar:   "
+        "All target pages reachable:  "
         f"{result_text(all_targets_reachable)}"
     )
 
     print(
-        f"Gegenseitige Rückverweise:    "
+        "Reciprocal return links:      "
         f"{result_text(all_return_links)}"
     )
 
     print(
-        f"Sprachcodes konsistent:       "
+        "Language codes consistent:   "
         f"{result_text(same_code_set)}"
     )
 
     print(
-        "Doppelte Sprachcodes:         "
+        "Duplicate language codes:    "
         + (
-            "KEINE"
+            "NONE"
             if no_duplicates
             else ", ".join(duplicate_codes)
         )
@@ -324,11 +359,11 @@ def check_shop(label: str, url: str) -> dict[str, object]:
     )
 
     print(
-        f"Gesamtbewertung:              "
-        f"{'OK' if overall_ok else 'PRÜFEN'}"
+        "Overall result:               "
+        f"{'OK' if overall_ok else 'WARNING'}"
     )
 
-    print("-" * 68)
+    print(SEPARATOR)
 
     return {
         "codes": current_codes,
@@ -337,59 +372,60 @@ def check_shop(label: str, url: str) -> dict[str, object]:
 
 
 print()
-print("=" * 68)
-print("hreflang-Prüfung")
-print(f"Seitentyp: {PAGE_TYPE}")
-print("=" * 68)
+print(HEADER_SEPARATOR)
+print("Hreflang Tag Comparison")
+print(f"Page type: {PAGE_TYPE}")
+print(HEADER_SEPARATOR)
 print()
 
 old_result = check_shop(
-    "ALTER SHOP",
-    OLD_URL
+    OLD_SHOP_NAME,
+    OLD_URL,
 )
 
 new_result = check_shop(
-    "NEUER SHOP",
-    NEW_URL
+    NEW_SHOP_NAME,
+    NEW_URL,
 )
 
 old_codes = old_result["codes"]
 new_codes = new_result["codes"]
 
 print()
-print("ERGEBNIS ALT / NEU")
-print("-" * 68)
+print("OLD / NEW COMPARISON")
+print(SEPARATOR)
 
 if old_codes == new_codes:
-    print("hreflang-Sprachcodes:         IDENTISCH")
+    print("Hreflang language codes:      IDENTICAL")
 else:
-    print("hreflang-Sprachcodes:         ABWEICHEND")
+    print("Hreflang language codes:      DIFFERENT")
 
     print(
-        "Nur im alten Shop:            "
+        "Only in old shop:             "
         + (
             ", ".join(sorted(old_codes - new_codes))
-            or "keine"
+            or "none"
         )
     )
 
     print(
-        "Nur im neuen Shop:            "
+        "Only in new shop:             "
         + (
             ", ".join(sorted(new_codes - old_codes))
-            or "keine"
+            or "none"
         )
     )
 
 print(
-    "Alter Shop:                   "
-    + ("OK" if old_result["ok"] else "PRÜFEN")
+    "Old shop:                     "
+    + ("OK" if old_result["ok"] else "WARNING")
 )
 
 print(
-    "Neuer Shop:                  "
-    + ("OK" if new_result["ok"] else "PRÜFEN")
+    "New shop:                     "
+    + ("OK" if new_result["ok"] else "WARNING")
 )
 
-print("-" * 68)
+print(SEPARATOR)
 PYTHON
+```
