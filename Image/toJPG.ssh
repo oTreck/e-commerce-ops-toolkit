@@ -1,0 +1,23 @@
+#!/bin/bash
+
+# Basisverzeichnis, in dem die Bilder durchsucht werden sollen
+basisverzeichnis="/home/arthur/compress/Master"
+
+# Durchsuche alle Verzeichnisse nach WEBP-Bilddateien
+find "$basisverzeichnis" -type f -iname "*.webp" | while read -r image; do
+  # Zielpfad für das konvertierte Bild
+  jpg_image="${image%.webp}.jpg"
+
+  # Konvertiere WEBP zu JPG mit ImageMagick
+  convert "$image" "$jpg_image"
+
+  # Überprüfe, ob die Konvertierung erfolgreich war
+  if [ $? -eq 0 ]; then
+    echo "Konvertierung erfolgreich: $image -> $jpg_image"
+  else
+    echo "Fehler bei der Konvertierung: $image"
+  fi
+
+done
+
+echo "Alle WEBP-Bilder wurden erfolgreich in JPG konvertiert."

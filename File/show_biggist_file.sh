@@ -1,0 +1,1 @@
+ tree -isafF |grep -v /$|sort -k2nr|headcd

@@ -81,3 +81,4 @@ for ext in "${IMAGE_EXTENSIONS[@]}"; do
 done
 
 echo "Image resize process completed."
+

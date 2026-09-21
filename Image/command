@@ -1,0 +1,6 @@
+ ./resize-images.sh   "/home/otreck/WORK/Income/session/BilderordnerHW26Online/Bilderordner_kopie"   1667x2500   jpg
+
+#pfad original                             #Ausgabe
+./oxid-webp-replace.sh /home/otreck/WORK/Income/session/BilderordnerHW26Online/Thumb /home/otreck/WORK/Libs/e-commerce-ops-toolkit/Image/ausgabe
+
+644 1116
